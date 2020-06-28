@@ -180,20 +180,15 @@ _Reward* FindRewardInternal(char* szReward)
 	}
 
 	BOOL isNumber = IsNumber(szReward);
-	int rewardNumber = ((int)atoi(szReward)) - 1;
-
-	CTabWnd* tabWindow = GetTabWindow();
-	if (!tabWindow)
-	{
-		return NULL;
-	}
 
 	if (isNumber) {
+		int rewardNumber = ((int)atoi(szReward)) - 1;
 		if (rewardNumber < 0 || rewardNumber > 9)
 		{
 			return NULL;
 		}
 
+		CTabWnd* tabWindow = GetTabWindow();
 		_Reward* rewardPtr = new _Reward();
 		rewardPtr->pagePtr = tabWindow->GetPageFromTabIndex(rewardNumber);
 		if (!rewardPtr->pagePtr)
@@ -203,18 +198,18 @@ _Reward* FindRewardInternal(char* szReward)
 
 		return rewardPtr;
 	}
-	else {
-		CPageWnd* pageWindow = (CPageWnd*)tabWindow->GetFirstChildWnd();
-		while (pageWindow)
-		{
-			if (pageWindow && !_stricmp(szReward, pageWindow->TabText->Text)) {
-				_Reward* rewardPtr = new _Reward();
-				rewardPtr->pagePtr = pageWindow;
-				return rewardPtr;
-			}
 
-			pageWindow = (CPageWnd*)pageWindow->GetNextSiblingWnd();
+	CTabWnd* tabWindow = GetTabWindow();
+	CPageWnd* pageWindow = (CPageWnd*)tabWindow->GetFirstChildWnd();
+	while (pageWindow)
+	{
+		if (pageWindow->TabText && pageWindow->TabText->Text && !_stricmp(szReward, pageWindow->TabText->Text)) {
+			_Reward* rewardPtr = new _Reward();
+			rewardPtr->pagePtr = pageWindow;
+			return rewardPtr;
 		}
+
+		pageWindow = (CPageWnd*)pageWindow->GetNextSiblingWnd();
 	}
 
 	return NULL;
@@ -226,10 +221,14 @@ _RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 		return NULL;
 	}
 
+	if (!listPtr || !listPtr->ItemsArray.Count) {
+		return NULL;
+	}
+
 	BOOL isNumber = IsNumber(szName);
-	int itemNumber = ((int)atoi(szName)) - 1;
 
 	if (isNumber) {
+		int itemNumber = ((int)atoi(szName)) - 1;
 		if (itemNumber < 0 || itemNumber > listPtr->ItemsArray.Count)
 		{
 			return NULL;
@@ -263,6 +262,16 @@ _RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 			return itemSelectionPtr;
 		}
 	}
+
+	return NULL;
+}
+
+_RewardOption* TestMethod(CPageWnd* pagePtr, char* szName)
+{
+	CXWnd* rewardWnd = FindMQ2Window("RewardSelectionWnd");
+	//CTabWnd* tabWindow = (CTabWnd*)rewardWnd->GetFirstChildWnd();
+	//CSIDLWND* pageWnd = tabWindow->GetFirstChildWnd();
+	//pageWnd = pageWnd->GetNextSiblingWnd();
 
 	return NULL;
 }
@@ -522,8 +531,6 @@ public:
 	*/
 	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
 	{
-		// We create a copy of our root node as IsNone() actually will create nonexistent nodes when
-		// checked. This causes failed TLO checks to actually modify our yaml.
 		PMQ2TYPEMEMBER pMember = MQ2RewardOptionItemType::FindMember(Member);
 		if (!pMember)
 			return false;
@@ -618,8 +625,6 @@ public:
 	*/
 	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
 	{
-		// We create a copy of our root node as IsNone() actually will create nonexistent nodes when
-		// checked. This causes failed TLO checks to actually modify our yaml.
 		PMQ2TYPEMEMBER pMember = MQ2RewardOptionType::FindMember(Member);
 		if (!pMember)
 			return false;
@@ -634,6 +639,7 @@ public:
 			return false;
 		}
 
+		PVOID ptr;
 		PCHARINFO pCharInfo = GetCharInfo();
 		switch ((Members)pMember->ID) {
 		case Text:
@@ -660,13 +666,16 @@ public:
 			return Dest.Int >= 0;
 		case Item:
 			if (Index[0]) {
-				Dest.Ptr = FindRewardOptionItem(GetPagePtr(item->listWndPtr), Index);
-				Dest.Type = pRewardOptionItemType;
-				return true;
+				ptr = FindRewardOptionItem(GetPagePtr(item->listWndPtr), Index);
+				if (ptr != NULL)
+				{
+					Dest.Ptr = ptr;
+					Dest.Type = pRewardOptionItemType;
+					return true;
+				}
 			}
 			return false;
 		}
-		return false;
 	}
 	bool ToString(MQ2VARPTR VarPtr, PCHAR Destination)
 	{
@@ -712,10 +721,10 @@ public:
 		Selected,
 		Select,
 		Claim,
-		OptionCount,
+		Options,
 		Option,
-		ItemCount,
-		Item
+		Items,
+		Item,
 	};
 
 	MQ2RewardType() :MQ2Type("RewardItem")
@@ -724,26 +733,15 @@ public:
 		TypeMember(Selected);
 		TypeMember(Select);
 		TypeMember(Claim);
-		TypeMember(OptionCount);
+		TypeMember(Options);
 		TypeMember(Option);
-		TypeMember(ItemCount);
+		TypeMember(Items);
 		TypeMember(Item);
 	}
 	~MQ2RewardType() {}
 
-	/*
-	* Rewards.Reward[#/name] 
-	*       Text  -- Returns the reward name (tab title) if exists otherwise NULL.
-	*		Selected -- Returns TRUE if the reward/tab is selected; otherwise FALSE.
-	*		Select	-- Selects the specified reward/tab.
-	*		Claim	-- Claims the reward with whatever selection is chosen.  TRUE if able to; FALSE if not.
-	*		OptionCount	-- Returns number of options available for this reward.
-	*		Option	-- Allows interaction with the options, if any, for the specified reward
-	*/
 	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
 	{
-		// We create a copy of our root node as IsNone() actually will create nonexistent nodes when
-		// checked. This causes failed TLO checks to actually modify our yaml.
 		PMQ2TYPEMEMBER pMember = MQ2RewardType::FindMember(Member);
 		if (!pMember)
 			return false;
@@ -752,12 +750,13 @@ public:
 
 		if (!VarPtr.Ptr)
 			return false;
-
+		
 		_Reward* item = (_Reward*)VarPtr.Ptr;
 		if (!item || !item->pagePtr) {
 			return false;
 		}
 
+		PVOID ptr;
 		PCHARINFO pCharInfo = GetCharInfo();
 		switch ((Members)pMember->ID) {
 		case Text:
@@ -769,7 +768,7 @@ public:
 			Dest.Int = item->pagePtr->IsVisible();
 			Dest.Type = pBoolType;
 			return true;
-		case Select:			
+		case Select:
 			Dest.Int = SelectReward(item);
 			Dest.Type = pBoolType;
 			return true;
@@ -777,32 +776,40 @@ public:
 			Dest.Int = ClaimReward(item);
 			Dest.Type = pBoolType;
 			return Dest.Int == TRUE;
-		case OptionCount:
+		case Options:
 			Dest.Int = GetRewardOptionCount(item);
 			Dest.Type = pIntType;
-			return Dest.Int >= 0;
+			return true;
 		case Option:
 			if (Index[0]) {
-				Dest.Ptr = FindRewardOption(item->pagePtr, Index);
-				Dest.Type = pRewardOptionType;
-				return true;
+				ptr = FindRewardOption(item->pagePtr, Index);
+				if (ptr != NULL)
+				{
+					Dest.Ptr = ptr;
+					Dest.Type = pRewardOptionType;
+					return true;
+				}
 			}
 			return false;
-		case ItemCount:
+		case Items:
 			// TODO: Track whether a page has been visited/loaded. Only force it once.
 			SelectReward(item);
 			Dest.Int = GetRewardOptionItemCount(item->pagePtr);
 			Dest.Type = pIntType;
-			return Dest.Int >= 0;
+			return true;
 		case Item:
 			if (Index[0]) {
 				// TODO: Track whether a page has been visited/loaded. Only force it once.
 				SelectReward(item);
-				Dest.Ptr = FindRewardOptionItem(item->pagePtr, Index);
-				Dest.Type = pRewardOptionItemType;
-				return true;
+				ptr = FindRewardOptionItem(item->pagePtr, Index);
+				if (ptr != NULL)
+				{
+					Dest.Ptr = ptr;
+					Dest.Type = pRewardOptionItemType;
+					return true;
+				}
 			}
-			return false;
+			break;
 		}
 		return false;
 	}
@@ -849,7 +856,8 @@ public:
 		Open,
 		Close,
 		Reward,
-		Count
+		Count,
+		Test,
 	};
 
 	MQ2RewardsType() :MQ2Type("Rewards")
@@ -858,15 +866,10 @@ public:
 		TypeMember(Close);
 		TypeMember(Reward);
 		TypeMember(Count);
+		TypeMember(Test);
 	}
 	~MQ2RewardsType() {}
 
-	/*
-	* Rewards.Count -- Returns the current count of pending rewards
-	* Rewards.Reward[#/name] -- Returns associated reward name or NULL if not exist.
-	* Rewards.Open			-- Opens the reward window, if not already.
-	* Rewards.Close			-- Closes the reward window.
-	*/
 	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
 	{
 		PMQ2TYPEMEMBER pMember = MQ2RewardsType::FindMember(Member);
@@ -879,7 +882,7 @@ public:
 		switch ((Members)pMember->ID) {
 		case Open:
 			Dest.Int = OpenRewardWindow() != NULL;
-			Dest.Type = pBoolType;
+			Dest.Type = pBoolType; 
 			return true;
 		case Close:
 			CloseRewardWindow();
@@ -895,13 +898,22 @@ public:
 					return true;
 				}
 			}
-			return false;
+			break;
 		case Count:
 			Dest.Int = GetRewardsCount();
 			Dest.Type = pIntType;
 			return true;
+		case Test:
+			
+			return false;
 		}
 		return false;
+	}
+	void InitVariable(MQ2VARPTR& VarPtr) {
+		WriteChatColor("Dogs2");
+	}
+	void FreeVarible(MQ2VARPTR& VarPtr) {
+		WriteChatColor("Dogs1");
 	}
 	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
 	{
