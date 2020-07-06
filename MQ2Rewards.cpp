@@ -1,49 +1,34 @@
-// MQ2Rewards.cpp : Defines the entry point for the DLL application.
-//
-// TODOs:
-//    * Change to partial matches unless leader "="
-
-
 #include "../MQ2Plugin.h"
 
-
 PreSetup("MQ2Rewards");
+PLUGIN_VERSION(1.0);
 
 const int RewardChoiceColumn = 0;
 
 struct _Reward
 {
 	CPageWnd* pagePtr;
-	char* szName;
+	char szName[MAX_STRING];
 };
 
 struct _RewardOption
 {
 	CListWnd* listWndPtr;
 	int index;
-	char szName[MAX_STRING] = { 0 };
+	char szName[MAX_STRING];
 };
 
-CXWnd* GetRewardWindow()
+struct _Reward Rewards[20];
+struct _RewardOption RewardOptions[20];
+
+CTabWnd* GetTabWindow()
 {
 	CXWnd* rewardWnd = (CXWnd*)FindMQ2Window("RewardSelectionWnd");
 	if (!rewardWnd)
 	{
-		WriteChatf("Unable to access RewardSelectionWnd");
 		return NULL;
 	}
-
-	return rewardWnd;
-}
-
-CTabWnd* GetTabWindow()
-{
-	CXWnd* rewardWindow = GetRewardWindow();
-	if (!rewardWindow)
-	{
-		return NULL;
-	}
-	CTabWnd* tabWindow = (CTabWnd*)rewardWindow->GetFirstChildWnd();
+	CTabWnd* tabWindow = (CTabWnd*)rewardWnd->GetFirstChildWnd();
 	return tabWindow;
 }
 
@@ -84,42 +69,11 @@ CPageWnd* GetCurrentPage()
 	return tabWindow->GetCurrentPage();
 }
 
-CXWnd* OpenRewardWindow()
-{
-	CXWnd* rewardWnd = GetRewardWindow();
-	if (!rewardWnd)
-	{
-		return NULL;
-	}
-
-	if (!rewardWnd->IsVisible())
-	{
-		rewardWnd->Show();
-		if (!rewardWnd->IsVisible())
-		{
-			MacroError("Unable to open reward window. Most likely no rewards exist.");
-			return NULL;
-		}
-	}
-
-	return rewardWnd;
-}
-
-VOID CloseRewardWindow()
-{
-	CXWnd* rewardWnd = GetRewardWindow();
-	if (rewardWnd && rewardWnd->IsVisible())
-	{
-		rewardWnd->SetVisible(false);
-	}
-}
-
 int GetRewardsCount()
 {
 	CTabWnd* tabWindow = GetTabWindow();
 	if (!tabWindow)
 	{
-		MacroError("Unable to acquire reward tab control");
 		return -1;
 	}
 
@@ -189,14 +143,14 @@ _Reward* FindRewardInternal(char* szReward)
 		}
 
 		CTabWnd* tabWindow = GetTabWindow();
-		_Reward* rewardPtr = new _Reward();
-		rewardPtr->pagePtr = tabWindow->GetPageFromTabIndex(rewardNumber);
-		if (!rewardPtr->pagePtr)
+		_Reward rewardPtr;
+		rewardPtr.pagePtr = tabWindow->GetPageFromTabIndex(rewardNumber);
+		if (!rewardPtr.pagePtr)
 		{
 			return NULL;
 		}
 
-		return rewardPtr;
+		return &rewardPtr;
 	}
 
 	CTabWnd* tabWindow = GetTabWindow();
@@ -204,9 +158,9 @@ _Reward* FindRewardInternal(char* szReward)
 	while (pageWindow)
 	{
 		if (pageWindow->TabText && pageWindow->TabText->Text && !_stricmp(szReward, pageWindow->TabText->Text)) {
-			_Reward* rewardPtr = new _Reward();
-			rewardPtr->pagePtr = pageWindow;
-			return rewardPtr;
+			_Reward rewardPtr;
+			rewardPtr.pagePtr = pageWindow;
+			return &rewardPtr;
 		}
 
 		pageWindow = (CPageWnd*)pageWindow->GetNextSiblingWnd();
@@ -234,16 +188,16 @@ _RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 			return NULL;
 		}
 
-		_RewardOption* itemSelectionPtr = new _RewardOption();
-		itemSelectionPtr->index = itemNumber;
-		itemSelectionPtr->listWndPtr = listPtr;
+		_RewardOption itemSelectionPtr;
+		itemSelectionPtr.index = itemNumber;
+		itemSelectionPtr.listWndPtr = listPtr;
 
 		CXStr itemText;
 		CHAR szOut[MAX_STRING] = { 0 };
-		itemSelectionPtr->listWndPtr->GetItemText(&itemText, itemNumber, 0);
-		GetCXStr(itemText.Ptr, itemSelectionPtr->szName, MAX_STRING);
+		itemSelectionPtr.listWndPtr->GetItemText(&itemText, itemNumber, 0);
+		GetCXStr(itemText.Ptr, itemSelectionPtr.szName, MAX_STRING);
 
-		return itemSelectionPtr;
+		return &itemSelectionPtr;
 	}
 
 	CXStr itemText;
@@ -255,23 +209,13 @@ _RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 		GetCXStr(itemText.Ptr, szOut, MAX_STRING);
 
 		if (!_stricmp(szOut, szName)) {
-			_RewardOption* itemSelectionPtr = new _RewardOption();
-			itemSelectionPtr->index = index;
-			itemSelectionPtr->listWndPtr = listPtr;
-			strcpy_s(itemSelectionPtr->szName, szOut);
-			return itemSelectionPtr;
+			_RewardOption itemSelectionPtr;
+			itemSelectionPtr.index = index;
+			itemSelectionPtr.listWndPtr = listPtr;
+			strcpy_s(itemSelectionPtr.szName, szOut);
+			return &itemSelectionPtr;
 		}
 	}
-
-	return NULL;
-}
-
-_RewardOption* TestMethod(CPageWnd* pagePtr, char* szName)
-{
-	CXWnd* rewardWnd = FindMQ2Window("RewardSelectionWnd");
-	//CTabWnd* tabWindow = (CTabWnd*)rewardWnd->GetFirstChildWnd();
-	//CSIDLWND* pageWnd = tabWindow->GetFirstChildWnd();
-	//pageWnd = pageWnd->GetNextSiblingWnd();
 
 	return NULL;
 }
@@ -295,7 +239,6 @@ BOOL SelectReward(_Reward* rewardPtr)
 		return FALSE;
 	}
 
-	// int index = tabWindow->PageArray.GetElementIdx(rewardItem->pagePtr);
 	for (int index = 0; index <= tabWindow->PageArray.Count; index++)
 	{
 		CPageWnd* pageWindowCheck = tabWindow->GetPageFromTabIndex(index);
@@ -373,7 +316,6 @@ VOID CommandSelectOption(PSPAWNINFO pChar, PCHAR szLine)
 	CPageWnd* pageWindow = GetCurrentPage();
 	if (!pageWindow)
 	{
-		MacroError("No reward selected.  Cannot choose option.");
 		return;
 	}
 
@@ -383,7 +325,6 @@ VOID CommandSelectOption(PSPAWNINFO pChar, PCHAR szLine)
 	CListWnd* pList = GetOptionListControl(pageWindow);
 	if (!pList)
 	{
-		MacroError("Error: Unable to find reward list.");
 		return;
 	}
 
@@ -523,12 +464,6 @@ public:
 
 	~MQ2RewardOptionItemType() {}
 
-	/*
-	* Rewards.Reward[#/name].Option[#/name]
-	*		Text		-- name of this option if exists; otherwise NULL.
-	*		Selected	-- TRUE if this item is selected; otherwise FALSE;
-	*		Select		-- Selects option if exists.  Returns TRUE otherwise FALSE
-	*/
 	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
 	{
 		PMQ2TYPEMEMBER pMember = MQ2RewardOptionItemType::FindMember(Member);
@@ -615,14 +550,6 @@ public:
 
 	~MQ2RewardOptionType() {}
 
-	/*
-	* Rewards.Reward[#/name].Option[#/name]
-	*		Text		-- name of this option if exists; otherwise NULL.
-	*		Selected	-- TRUE if this item is selected; otherwise FALSE;
-	*		Select		-- Selects option if exists.  Returns TRUE otherwise FALSE
-	*		ItemCount	-- Returns number of items (right list) available for this reward.
-	*		Item		-- Allows interaction with the items, if any, for the specified reward
-	*/
 	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
 	{
 		PMQ2TYPEMEMBER pMember = MQ2RewardOptionType::FindMember(Member);
@@ -785,7 +712,8 @@ public:
 				ptr = FindRewardOption(item->pagePtr, Index);
 				if (ptr != NULL)
 				{
-					Dest.Ptr = ptr;
+					memcpy(&RewardOptions[0], ptr, sizeof(_RewardOption));
+					Dest.Ptr = &RewardOptions[0];
 					Dest.Type = pRewardOptionType;
 					return true;
 				}
@@ -853,8 +781,6 @@ public:
 class MQ2RewardsType : public MQ2Type {
 public:
 	enum Members {
-		Open,
-		Close,
 		Reward,
 		Count,
 		Test,
@@ -862,8 +788,6 @@ public:
 
 	MQ2RewardsType() :MQ2Type("Rewards")
 	{
-		TypeMember(Open);
-		TypeMember(Close);
 		TypeMember(Reward);
 		TypeMember(Count);
 		TypeMember(Test);
@@ -880,20 +804,12 @@ public:
 
 		PCHARINFO pCharInfo = GetCharInfo();
 		switch ((Members)pMember->ID) {
-		case Open:
-			Dest.Int = OpenRewardWindow() != NULL;
-			Dest.Type = pBoolType; 
-			return true;
-		case Close:
-			CloseRewardWindow();
-			Dest.Int = 1;
-			Dest.Type = pBoolType;
-			return true;
 		case Reward:
 			if (Index[0]) {
 				_Reward* rewardPtr = FindRewardInternal(Index);
 				if (rewardPtr && rewardPtr->pagePtr) {
-					Dest.Ptr = rewardPtr;
+					memcpy(&Rewards[0], rewardPtr, sizeof(_Reward));
+					Dest.Ptr = &Rewards[0];
 					Dest.Type = pRewardType;
 					return true;
 				}
@@ -908,12 +824,6 @@ public:
 			return false;
 		}
 		return false;
-	}
-	void InitVariable(MQ2VARPTR& VarPtr) {
-		WriteChatColor("Dogs2");
-	}
-	void FreeVarible(MQ2VARPTR& VarPtr) {
-		WriteChatColor("Dogs1");
 	}
 	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
 	{
