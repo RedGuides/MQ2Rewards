@@ -5,28 +5,43 @@ PLUGIN_VERSION(1.0);
 
 const int RewardChoiceColumn = 0;
 
-struct _Reward
+struct RewardItem
 {
 	CPageWnd* pagePtr;
 	char szName[MAX_STRING];
 };
 
-struct _RewardOption
+struct RewardOption
 {
 	CListWnd* listWndPtr;
 	int index;
 	char szName[MAX_STRING];
 };
 
-struct _Reward Rewards[20];
-struct _RewardOption RewardOptions[20];
+struct RewardItem Rewards[20];
+struct RewardOption RewardOptions[20];
+
+static inline bool IsNumeric(PCHAR String)
+{
+	if (*String == 0)
+		return false;
+	if (*String == '-')
+		String++;
+	while (*String)
+	{
+		if (!((*String >= '0' && *String <= '9') || *String == '.'))
+			return false;
+		++String;
+	}
+	return true;
+}
 
 CTabWnd* GetTabWindow()
 {
 	CXWnd* rewardWnd = (CXWnd*)FindMQ2Window("RewardSelectionWnd");
 	if (!rewardWnd)
 	{
-		return NULL;
+		return nullptr;
 	}
 	CTabWnd* tabWindow = (CTabWnd*)rewardWnd->GetFirstChildWnd();
 	return tabWindow;
@@ -37,7 +52,7 @@ CPageWnd* GetSelectedRewardPage()
 	CTabWnd* tabWindow = GetTabWindow();
 	if (!tabWindow)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	CPageWnd* pageWindow = tabWindow->GetCurrentPage();
@@ -63,7 +78,7 @@ CPageWnd* GetCurrentPage()
 {
 	CTabWnd* tabWindow = GetTabWindow();
 	if (!tabWindow) {
-		return NULL;
+		return nullptr;
 	}
 
 	return tabWindow->GetCurrentPage();
@@ -90,7 +105,7 @@ int GetRewardsCount()
 	return rewardCount;
 }
 
-int GetRewardOptionCount(_Reward* rewardPtr)
+int GetRewardOptionCount(RewardItem* rewardPtr)
 {
 	CListWnd* listWndPtr = GetOptionListControl(rewardPtr->pagePtr);
 	if (!listWndPtr) {
@@ -107,7 +122,7 @@ char* GetRewardOptionText(CListWnd* listWindow, int index = -1)
 	}
 
 	if (index < 0) {
-		return NULL;
+		return nullptr;
 	}
 
 	CXStr Str;
@@ -127,27 +142,27 @@ int GetRewardOptionItemCount(CPageWnd* pagePtr)
 	return listWndPtr->ItemsArray.Count;
 }
 
-_Reward* FindRewardInternal(char* szReward)
+RewardItem* FindRewardInternal(char* szReward)
 {
 	if (!szReward[0]) {
-		return NULL;
+		return nullptr;
 	}
 
-	BOOL isNumber = IsNumber(szReward);
+	bool isNumber = IsNumeric(szReward);
 
 	if (isNumber) {
-		int rewardNumber = ((int)atoi(szReward)) - 1;
+		int rewardNumber = atoi(szReward) - 1;
 		if (rewardNumber < 0 || rewardNumber > 9)
 		{
-			return NULL;
+			return nullptr;
 		}
 
 		CTabWnd* tabWindow = GetTabWindow();
-		_Reward rewardPtr;
+		RewardItem rewardPtr;
 		rewardPtr.pagePtr = tabWindow->GetPageFromTabIndex(rewardNumber);
 		if (!rewardPtr.pagePtr)
 		{
-			return NULL;
+			return nullptr;
 		}
 
 		return &rewardPtr;
@@ -158,7 +173,7 @@ _Reward* FindRewardInternal(char* szReward)
 	while (pageWindow)
 	{
 		if (pageWindow->TabText && pageWindow->TabText->Text && !_stricmp(szReward, pageWindow->TabText->Text)) {
-			_Reward rewardPtr;
+			RewardItem rewardPtr;
 			rewardPtr.pagePtr = pageWindow;
 			return &rewardPtr;
 		}
@@ -166,29 +181,29 @@ _Reward* FindRewardInternal(char* szReward)
 		pageWindow = (CPageWnd*)pageWindow->GetNextSiblingWnd();
 	}
 
-	return NULL;
+	return nullptr;
 }
 
-_RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
+RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 {
 	if (!szName[0]) {
-		return NULL;
+		return nullptr;
 	}
 
 	if (!listPtr || !listPtr->ItemsArray.Count) {
-		return NULL;
+		return nullptr;
 	}
 
-	BOOL isNumber = IsNumber(szName);
+	bool isNumber = IsNumeric(szName);
 
 	if (isNumber) {
-		int itemNumber = ((int)atoi(szName)) - 1;
+		int itemNumber = atoi(szName) - 1;
 		if (itemNumber < 0 || itemNumber > listPtr->ItemsArray.Count)
 		{
-			return NULL;
+			return nullptr;
 		}
 
-		_RewardOption itemSelectionPtr;
+		RewardOption itemSelectionPtr;
 		itemSelectionPtr.index = itemNumber;
 		itemSelectionPtr.listWndPtr = listPtr;
 
@@ -209,7 +224,7 @@ _RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 		GetCXStr(itemText.Ptr, szOut, MAX_STRING);
 
 		if (!_stricmp(szOut, szName)) {
-			_RewardOption itemSelectionPtr;
+			RewardOption itemSelectionPtr;
 			itemSelectionPtr.index = index;
 			itemSelectionPtr.listWndPtr = listPtr;
 			strcpy_s(itemSelectionPtr.szName, szOut);
@@ -217,22 +232,22 @@ _RewardOption* FindListItemInternal(CListWnd* listPtr, char* szName)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
-_RewardOption* FindRewardOption(CPageWnd* pagePtr, char* szName)
+RewardOption* FindRewardOption(CPageWnd* pagePtr, char* szName)
 {
 	CListWnd* listPtr = GetOptionListControl(pagePtr);
 	return FindListItemInternal(listPtr, szName);
 }
 
-_RewardOption* FindRewardOptionItem(CPageWnd* pagePtr, char* szName)
+RewardOption* FindRewardOptionItem(CPageWnd* pagePtr, char* szName)
 {
 	CListWnd* listPtr = GetOptionItemListControl(pagePtr);
 	return FindListItemInternal(listPtr, szName);
 }
 
-BOOL SelectReward(_Reward* rewardPtr)
+BOOL SelectReward(RewardItem* rewardPtr)
 {
 	CTabWnd* tabWindow = GetTabWindow();
 	if (!tabWindow) {
@@ -257,7 +272,7 @@ BOOL SelectReward(_Reward* rewardPtr)
 	return FALSE;
 }
 
-BOOL ClaimReward(_Reward* rewardPtr)
+BOOL ClaimReward(RewardItem* rewardPtr)
 {
 	CListWnd* pList = GetOptionListControl(rewardPtr->pagePtr);
 	int selectedOption = pList->GetCurSel();
@@ -319,8 +334,8 @@ VOID CommandSelectOption(PSPAWNINFO pChar, PCHAR szLine)
 		return;
 	}
 
-	BOOL isNumber = IsNumber(szOption);
-	int optionNumber = (int)atoi(szOption) - 1;
+	bool isNumber = IsNumeric(szOption);
+	int optionNumber = atoi(szOption) - 1;
 
 	CListWnd* pList = GetOptionListControl(pageWindow);
 	if (!pList)
@@ -369,7 +384,7 @@ VOID CommandSelectReward(PSPAWNINFO pChar, PCHAR szLine)
 	char szReward[MAX_STRING] = { 0 };
 	GetArg(szReward, szLine, 2);
 
-	_Reward* rewardPtr = FindRewardInternal(szReward);
+	RewardItem* rewardPtr = FindRewardInternal(szReward);
 	if (!rewardPtr)
 	{
 		MacroError("Reward not found: '%s'", szReward);
@@ -475,7 +490,7 @@ public:
 		if (!VarPtr.Ptr)
 			return false;
 
-		_RewardOption* item = (_RewardOption*)VarPtr.Ptr;
+		RewardOption* item = (RewardOption*)VarPtr.Ptr;
 		if (!item) {
 			return false;
 		}
@@ -497,7 +512,7 @@ public:
 		if (!VarPtr.Ptr) {
 			return false;
 		}
-		_RewardOption* itemPtr = (_RewardOption*)VarPtr.Ptr;
+		RewardOption* itemPtr = (RewardOption*)VarPtr.Ptr;
 		if (!itemPtr) {
 			return false;
 		}
@@ -505,9 +520,9 @@ public:
 		return true;
 	}
 	void InitVariable(MQ2VARPTR& VarPtr) {
-		VarPtr.Ptr = malloc(sizeof(_RewardOption));
+		VarPtr.Ptr = malloc(sizeof(RewardOption));
 		VarPtr.HighPart = 0;
-		ZeroMemory(VarPtr.Ptr, sizeof(_RewardOption));
+		ZeroMemory(VarPtr.Ptr, sizeof(RewardOption));
 	}
 	void FreeVariable(MQ2VARPTR& VarPtr) {
 		free(VarPtr.Ptr);
@@ -519,7 +534,7 @@ public:
 			return false;
 		}
 
-		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(_RewardOption));
+		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(RewardOption));
 
 		return true;
 	}
@@ -561,7 +576,7 @@ public:
 		if (!VarPtr.Ptr)
 			return false;
 
-		_RewardOption* item = (_RewardOption*)VarPtr.Ptr;
+		RewardOption* item = (RewardOption*)VarPtr.Ptr;
 		if (!item) {
 			return false;
 		}
@@ -594,36 +609,40 @@ public:
 		case Item:
 			if (Index[0]) {
 				ptr = FindRewardOptionItem(GetPagePtr(item->listWndPtr), Index);
-				if (ptr != NULL)
+				if (ptr != nullptr)
 				{
 					Dest.Ptr = ptr;
 					Dest.Type = pRewardOptionItemType;
 					return true;
 				}
 			}
-			return false;
 		}
+		return false;
 	}
+
 	bool ToString(MQ2VARPTR VarPtr, PCHAR Destination)
 	{
 		if (!VarPtr.Ptr) {
 			return false;
 		}
-		_RewardOption* itemPtr = (_RewardOption*)VarPtr.Ptr;
+		RewardOption* itemPtr = (RewardOption*)VarPtr.Ptr;
 		if (!itemPtr) {
 			return false;
 		}
 		strcpy_s(Destination, MAX_STRING, itemPtr->szName);
 		return true;
 	}
+
 	void InitVariable(MQ2VARPTR& VarPtr) {
-		VarPtr.Ptr = malloc(sizeof(_RewardOption));
+		VarPtr.Ptr = malloc(sizeof(RewardOption));
 		VarPtr.HighPart = 0;
-		ZeroMemory(VarPtr.Ptr, sizeof(_RewardOption));
+		ZeroMemory(VarPtr.Ptr, sizeof(RewardOption));
 	}
+
 	void FreeVariable(MQ2VARPTR& VarPtr) {
 		free(VarPtr.Ptr);
 	}
+
 	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
 	{
 		if (Source.Type != pRewardOptionType)
@@ -631,10 +650,11 @@ public:
 			return false;
 		}
 
-		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(_RewardOption));
+		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(RewardOption));
 
 		return true;
 	}
+
 	bool FromString(MQ2VARPTR& VarPtr, PCHAR Source)
 	{
 		return false;
@@ -678,7 +698,7 @@ public:
 		if (!VarPtr.Ptr)
 			return false;
 		
-		_Reward* item = (_Reward*)VarPtr.Ptr;
+		RewardItem* item = (RewardItem*)VarPtr.Ptr;
 		if (!item || !item->pagePtr) {
 			return false;
 		}
@@ -710,9 +730,9 @@ public:
 		case Option:
 			if (Index[0]) {
 				ptr = FindRewardOption(item->pagePtr, Index);
-				if (ptr != NULL)
+				if (ptr != nullptr)
 				{
-					memcpy(&RewardOptions[0], ptr, sizeof(_RewardOption));
+					memcpy(&RewardOptions[0], ptr, sizeof(RewardOption));
 					Dest.Ptr = &RewardOptions[0];
 					Dest.Type = pRewardOptionType;
 					return true;
@@ -730,7 +750,7 @@ public:
 				// TODO: Track whether a page has been visited/loaded. Only force it once.
 				SelectReward(item);
 				ptr = FindRewardOptionItem(item->pagePtr, Index);
-				if (ptr != NULL)
+				if (ptr != nullptr)
 				{
 					Dest.Ptr = ptr;
 					Dest.Type = pRewardOptionItemType;
@@ -746,7 +766,7 @@ public:
 		if (!VarPtr.Ptr) {
 			return false;
 		}
-		_Reward* item = (_Reward*)VarPtr.Ptr;
+		RewardItem* item = (RewardItem*)VarPtr.Ptr;
 		if (!item) {
 			return false;
 		}
@@ -754,9 +774,9 @@ public:
 		return true;
 	}
 	void InitVariable(MQ2VARPTR& VarPtr) {
-		VarPtr.Ptr = malloc(sizeof(_Reward));
+		VarPtr.Ptr = malloc(sizeof(RewardItem));
 		VarPtr.HighPart = 0;
-		ZeroMemory(VarPtr.Ptr, sizeof(_Reward));
+		ZeroMemory(VarPtr.Ptr, sizeof(RewardItem));
 	}
 	void FreeVariable(MQ2VARPTR& VarPtr) {
 		free(VarPtr.Ptr);
@@ -768,7 +788,7 @@ public:
 			return false;
 		}
 
-		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(_Reward));
+		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(RewardItem));
 
 		return true;
 	}
@@ -806,9 +826,9 @@ public:
 		switch ((Members)pMember->ID) {
 		case Reward:
 			if (Index[0]) {
-				_Reward* rewardPtr = FindRewardInternal(Index);
+				RewardItem* rewardPtr = FindRewardInternal(Index);
 				if (rewardPtr && rewardPtr->pagePtr) {
-					memcpy(&Rewards[0], rewardPtr, sizeof(_Reward));
+					memcpy(&Rewards[0], rewardPtr, sizeof(RewardItem));
 					Dest.Ptr = &Rewards[0];
 					Dest.Type = pRewardType;
 					return true;
