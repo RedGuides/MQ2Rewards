@@ -811,14 +811,12 @@ public:
 	enum Members {
 		Reward,
 		Count,
-		Test,
 	};
 
 	MQ2RewardsType() :MQ2Type("Rewards")
 	{
 		TypeMember(Reward);
 		TypeMember(Count);
-		TypeMember(Test);
 	}
 	~MQ2RewardsType() {}
 
@@ -847,9 +845,6 @@ public:
 			Dest.Int = GetRewardsCount();
 			Dest.Type = pIntType;
 			return true;
-		case Test:
-			
-			return false;
 		}
 		return false;
 	}
