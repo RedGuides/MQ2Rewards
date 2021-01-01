@@ -99,6 +99,7 @@ int GetRewardsCount()
 	_CSIDLWND* pageWindow = tabWindow->GetFirstChildWnd();
 	while (pageWindow)
 	{
+		CPageWnd* testPage = reinterpret_cast<CPageWnd*>(pageWindow);
 		rewardCount++;
 
 		pageWindow = pageWindow->GetNextSiblingWnd();
@@ -760,7 +761,7 @@ public:
 				if (option.index > -1)
 				{
 					memcpy(&RewardOptionItems[0], &option, sizeof(RewardOption));
-					Dest.Ptr = &RewardOptions[0];
+					Dest.Ptr = &RewardOptionItems[0];
 					Dest.Type = pRewardOptionItemType;
 					return true;
 				}
