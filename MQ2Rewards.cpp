@@ -99,7 +99,6 @@ int GetRewardsCount()
 	_CSIDLWND* pageWindow = tabWindow->GetFirstChildWnd();
 	while (pageWindow)
 	{
-		CPageWnd* testPage = reinterpret_cast<CPageWnd*>(pageWindow);
 		rewardCount++;
 
 		pageWindow = pageWindow->GetNextSiblingWnd();
