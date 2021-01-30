@@ -179,7 +179,7 @@ RewardItem FindRewardInternal(char* szReward)
 	{
 		if (pageWindow->TabText) {
 			char buffer[MAX_STRING] = { 0 };
-			GetCXStr(pageWindow->TabText.Ptr, buffer, MAX_STRING);
+			GetCXStr(pageWindow->TabText, buffer, MAX_STRING);
 			if (buffer[0] != '\0' && !_stricmp(szReward, buffer)) {
 				rewardItem.exists = true;
 				rewardItem.pagePtr = pageWindow;
@@ -272,7 +272,12 @@ BOOL SelectReward(RewardItem* rewardPtr)
 			continue;
 		}
 
-		if (!_stricmp(pageWindowCheck->TabText, rewardPtr->pagePtr->TabText))
+		char pagewndTabText[MAX_STRING] = { 0 };
+		char pageptrTabText[MAX_STRING] = { 0 };
+		GetCXStr(pageWindowCheck->TabText, pagewndTabText, MAX_STRING);
+		GetCXStr(rewardPtr->pagePtr->TabText, pageptrTabText, MAX_STRING);
+
+		if (!_stricmp(pagewndTabText, pageptrTabText))
 		{
 			tabWindow->SetPage(index);
 			return TRUE;
@@ -298,7 +303,7 @@ BOOL ClaimReward(RewardItem* rewardPtr)
 	}
 
 	char buffer[MAX_STRING] = { 0 };
-	GetCXStr(rewardPtr->pagePtr->TabText.Ptr, buffer, MAX_STRING);
+	GetCXStr(rewardPtr->pagePtr->TabText, buffer, MAX_STRING);
 	if (buffer[0] != '\0')
 		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", buffer, selectedOption);
 	// WriteChatf("[MQ2Rewards] Claiming reward '%s', option '%s'.", pageWindow->TabText->Text, GetRewardOptionText(pList, selectedOption));
@@ -438,7 +443,7 @@ VOID CommandClaimReward(PSPAWNINFO pChar, PCHAR szLine)
 	}
 
 	char buffer[MAX_STRING] = { 0 };
-	GetCXStr(pageWindow->TabText.Ptr, buffer, MAX_STRING);
+	GetCXStr(pageWindow->TabText, buffer, MAX_STRING);
 	if (buffer[0] != '\0')
 		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", buffer, selectedOption);
 	// WriteChatf("[MQ2Rewards] Claiming reward '%s', option '%s'.", pageWindow->TabText->Text, GetRewardOptionText(pList, selectedOption));
@@ -724,10 +729,14 @@ public:
 		PCHARINFO pCharInfo = GetCharInfo();
 		switch ((Members)pMember->ID) {
 		case Text:
-			strcpy_s(DataTypeTemp, item->pagePtr->TabText);
+		{
+			char buffer[MAX_STRING] = { 0 };
+			GetCXStr(item->pagePtr->TabText, buffer, MAX_STRING);
+			strcpy_s(DataTypeTemp, buffer);
 			Dest.Ptr = &DataTypeTemp[0];
 			Dest.Type = pStringType;
 			return true;
+		}
 		case Selected:
 			Dest.Int = item->pagePtr->IsVisible();
 			Dest.Type = pBoolType;
@@ -788,7 +797,9 @@ public:
 		if (!item) {
 			return false;
 		}
-		strcpy_s(Destination, MAX_STRING, item->pagePtr->TabText);
+		char buffer[MAX_STRING] = { 0 };
+		GetCXStr(item->pagePtr->TabText, buffer, MAX_STRING);
+		strcpy_s(Destination, MAX_STRING, buffer);
 		return true;
 	}
 	void InitVariable(MQ2VARPTR& VarPtr) {
