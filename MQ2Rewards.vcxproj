@@ -64,8 +64,8 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/OPT:NOICF %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)MQ2Exchange.dll</OutputFile>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)MQ2Rewards.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapExports>true</MapExports>
@@ -73,7 +73,7 @@
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <BaseAddress>0x04000000</BaseAddress>
-      <ImportLibrary>$(OutDir)MQ2Exchange.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)MQ2Rewards.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>  
   </ItemDefinitionGroup>
@@ -97,7 +97,7 @@
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <BaseAddress>0x04000000</BaseAddress>
-      <ImportLibrary>$(OutDir)MQ2Exchange.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)MQ2Rewards.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
