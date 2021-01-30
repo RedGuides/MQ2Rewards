@@ -177,10 +177,14 @@ RewardItem FindRewardInternal(char* szReward)
 	CPageWnd* pageWindow = (CPageWnd*)tabWindow->GetFirstChildWnd();
 	while (pageWindow)
 	{
-		if (pageWindow->TabText && pageWindow->TabText->Text && !_stricmp(szReward, pageWindow->TabText->Text)) {
-			rewardItem.exists = true;
-			rewardItem.pagePtr = pageWindow;
-			return rewardItem;
+		if (pageWindow->TabText) {
+			char buffer[MAX_STRING] = { 0 };
+			GetCXStr(pageWindow->TabText.Ptr, buffer, MAX_STRING);
+			if (buffer[0] != '\0' && !_stricmp(szReward, buffer)) {
+				rewardItem.exists = true;
+				rewardItem.pagePtr = pageWindow;
+				return rewardItem;
+			}
 		}
 
 		pageWindow = (CPageWnd*)pageWindow->GetNextSiblingWnd();
@@ -268,7 +272,7 @@ BOOL SelectReward(RewardItem* rewardPtr)
 			continue;
 		}
 
-		if (!_stricmp(pageWindowCheck->TabText->Text, rewardPtr->pagePtr->TabText->Text))
+		if (!_stricmp(pageWindowCheck->TabText, rewardPtr->pagePtr->TabText))
 		{
 			tabWindow->SetPage(index);
 			return TRUE;
@@ -293,13 +297,16 @@ BOOL ClaimReward(RewardItem* rewardPtr)
 		return FALSE;
 	}
 
-	WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", rewardPtr->pagePtr->TabText->Text, selectedOption);
+	char buffer[MAX_STRING] = { 0 };
+	GetCXStr(rewardPtr->pagePtr->TabText.Ptr, buffer, MAX_STRING);
+	if (buffer[0] != '\0')
+		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", buffer, selectedOption);
 	// WriteChatf("[MQ2Rewards] Claiming reward '%s', option '%s'.", pageWindow->TabText->Text, GetRewardOptionText(pList, selectedOption));
 	SendWndClick2((CXWnd*)selectOptionButton, "leftmouseup");
 
 	return TRUE;
 }
- 
+
 VOID SelectListOption(CListWnd* pListWindow, int index)
 {
 	pListWindow->SetCurSel(index);
@@ -430,7 +437,10 @@ VOID CommandClaimReward(PSPAWNINFO pChar, PCHAR szLine)
 		return;
 	}
 
-	WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", pageWindow->TabText->Text, selectedOption);
+	char buffer[MAX_STRING] = { 0 };
+	GetCXStr(pageWindow->TabText.Ptr, buffer, MAX_STRING);
+	if (buffer[0] != '\0')
+		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", buffer, selectedOption);
 	// WriteChatf("[MQ2Rewards] Claiming reward '%s', option '%s'.", pageWindow->TabText->Text, GetRewardOptionText(pList, selectedOption));
 	SendWndClick2((CXWnd*)selectOptionButton, "leftmouseup");
 }
@@ -705,7 +715,7 @@ public:
 
 		if (!VarPtr.Ptr)
 			return false;
-		
+
 		RewardItem* item = (RewardItem*)VarPtr.Ptr;
 		if (!item || !item->pagePtr) {
 			return false;
@@ -714,7 +724,7 @@ public:
 		PCHARINFO pCharInfo = GetCharInfo();
 		switch ((Members)pMember->ID) {
 		case Text:
-			strcpy_s(DataTypeTemp, item->pagePtr->TabText->Text);
+			strcpy_s(DataTypeTemp, item->pagePtr->TabText);
 			Dest.Ptr = &DataTypeTemp[0];
 			Dest.Type = pStringType;
 			return true;
@@ -778,7 +788,7 @@ public:
 		if (!item) {
 			return false;
 		}
-		strcpy_s(Destination, MAX_STRING, item->pagePtr->TabText->Text);
+		strcpy_s(Destination, MAX_STRING, item->pagePtr->TabText);
 		return true;
 	}
 	void InitVariable(MQ2VARPTR& VarPtr) {
