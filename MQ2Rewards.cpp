@@ -1,4 +1,4 @@
-#include "../MQ2Plugin.h"
+#include <mq/Plugin.h>
 
 PreSetup("MQ2Rewards");
 PLUGIN_VERSION(1.0);
@@ -96,7 +96,7 @@ int GetRewardsCount()
 
 	int rewardCount = -1;
 
-	_CSIDLWND* pageWindow = tabWindow->GetFirstChildWnd();
+	auto* pageWindow = tabWindow->GetFirstChildWnd();
 	while (pageWindow)
 	{
 		rewardCount++;
@@ -177,14 +177,11 @@ RewardItem FindRewardInternal(char* szReward)
 	CPageWnd* pageWindow = (CPageWnd*)tabWindow->GetFirstChildWnd();
 	while (pageWindow)
 	{
-		if (pageWindow->TabText) {
-			char buffer[MAX_STRING] = { 0 };
-			GetCXStr(pageWindow->TabText, buffer, MAX_STRING);
-			if (buffer[0] != '\0' && !_stricmp(szReward, buffer)) {
-				rewardItem.exists = true;
-				rewardItem.pagePtr = pageWindow;
-				return rewardItem;
-			}
+		if (!pageWindow->TabText.empty() && ci_equals(szReward, pageWindow->TabText))
+		{
+			rewardItem.exists = true;
+			rewardItem.pagePtr = pageWindow;
+			return rewardItem;
 		}
 
 		pageWindow = (CPageWnd*)pageWindow->GetNextSiblingWnd();
@@ -218,26 +215,19 @@ RewardOption FindListItemInternal(CListWnd* listPtr, char* szName)
 		itemSelection.index = itemNumber;
 		itemSelection.listWndPtr = listPtr;
 
-		CXStr itemText;
-		CHAR szOut[MAX_STRING] = { 0 };
-		itemSelection.listWndPtr->GetItemText(&itemText, itemNumber, 0);
-		GetCXStr(itemText.Ptr, itemSelection.szName, MAX_STRING);
+		strcpy_s(itemSelection.szName, itemSelection.listWndPtr->GetItemText(itemNumber).c_str());
 
 		return itemSelection;
 	}
 
-	CXStr itemText;
-	CHAR szOut[MAX_STRING] = { 0 };
-	int optionNumber = -1;
 	for (int index = 0; index < listPtr->ItemsArray.Count; index++)
 	{
-		listPtr->GetItemText(&itemText, index, 0);
-		GetCXStr(itemText.Ptr, szOut, MAX_STRING);
+		CXStr itemText = listPtr->GetItemText(index);
 
-		if (!_stricmp(szOut, szName)) {
+		if (ci_equals(itemText, szName)) {
 			itemSelection.index = index;
 			itemSelection.listWndPtr = listPtr;
-			strcpy_s(itemSelection.szName, szOut);
+			strcpy_s(itemSelection.szName, itemText.c_str());
 			return itemSelection;
 		}
 	}
@@ -267,17 +257,12 @@ BOOL SelectReward(RewardItem* rewardPtr)
 	for (int index = 0; index <= tabWindow->PageArray.Count; index++)
 	{
 		CPageWnd* pageWindowCheck = tabWindow->GetPageFromTabIndex(index);
-		if (!pageWindowCheck || !pageWindowCheck->TabText)
+		if (!pageWindowCheck || pageWindowCheck->TabText.empty())
 		{
 			continue;
 		}
 
-		char pagewndTabText[MAX_STRING] = { 0 };
-		char pageptrTabText[MAX_STRING] = { 0 };
-		GetCXStr(pageWindowCheck->TabText, pagewndTabText, MAX_STRING);
-		GetCXStr(rewardPtr->pagePtr->TabText, pageptrTabText, MAX_STRING);
-
-		if (!_stricmp(pagewndTabText, pageptrTabText))
+		if (ci_equals(pageWindowCheck->TabText, rewardPtr->pagePtr->TabText))
 		{
 			tabWindow->SetPage(index);
 			return TRUE;
@@ -302,11 +287,10 @@ BOOL ClaimReward(RewardItem* rewardPtr)
 		return FALSE;
 	}
 
-	char buffer[MAX_STRING] = { 0 };
-	GetCXStr(rewardPtr->pagePtr->TabText, buffer, MAX_STRING);
-	if (buffer[0] != '\0')
-		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", buffer, selectedOption);
-	// WriteChatf("[MQ2Rewards] Claiming reward '%s', option '%s'.", pageWindow->TabText->Text, GetRewardOptionText(pList, selectedOption));
+	if (!rewardPtr->pagePtr->TabText.empty())
+	{
+		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", rewardPtr->pagePtr->TabText.c_str(), selectedOption);
+	}
 	SendWndClick2((CXWnd*)selectOptionButton, "leftmouseup");
 
 	return TRUE;
@@ -318,8 +302,8 @@ VOID SelectListOption(CListWnd* pListWindow, int index)
 
 	CXRect listrect = pListWindow->GetItemRect(index, 0);
 	CXPoint listpt = listrect.CenterPoint();
-	((CXWnd*)pListWindow)->HandleLButtonDown(&listpt, 0);
-	((CXWnd*)pListWindow)->HandleLButtonUp(&listpt, 0);
+	((CXWnd*)pListWindow)->HandleLButtonDown(listpt, 0);
+	((CXWnd*)pListWindow)->HandleLButtonUp(listpt, 0);
 	WeDidStuff();
 }
 
@@ -374,15 +358,10 @@ VOID CommandSelectOption(PSPAWNINFO pChar, PCHAR szLine)
 		SelectListOption(pList, optionNumber);
 	}
 	else {
-		CXStr itemText;
-		CHAR szOut[MAX_STRING] = { 0 };
 		optionNumber = -1;
 		for (int index = 0; index < itemCount; index++)
 		{
-			pList->GetItemText(&itemText, index, 0);
-			GetCXStr(itemText.Ptr, szOut, MAX_STRING);
-
-			if (!_stricmp(szOut, szOption)) {
+			if (ci_equals(pList->GetItemText(index), szOption)) {
 				optionNumber = index;
 				break;
 			}
@@ -393,7 +372,6 @@ VOID CommandSelectOption(PSPAWNINFO pChar, PCHAR szLine)
 		}
 		else {
 			MacroError("Specified option does not exist: '%s'", szOption);
-			return;
 		}
 	}
 }
@@ -442,11 +420,10 @@ VOID CommandClaimReward(PSPAWNINFO pChar, PCHAR szLine)
 		return;
 	}
 
-	char buffer[MAX_STRING] = { 0 };
-	GetCXStr(pageWindow->TabText, buffer, MAX_STRING);
-	if (buffer[0] != '\0')
-		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", buffer, selectedOption);
-	// WriteChatf("[MQ2Rewards] Claiming reward '%s', option '%s'.", pageWindow->TabText->Text, GetRewardOptionText(pList, selectedOption));
+	if (!pageWindow->TabText.empty())
+	{
+		WriteChatf("[MQ2Rewards] Claiming reward '%s', option %d.", pageWindow->TabText.c_str(), selectedOption);
+	}
 	SendWndClick2((CXWnd*)selectOptionButton, "leftmouseup");
 }
 
@@ -502,9 +479,9 @@ public:
 
 	~MQ2RewardOptionItemType() {}
 
-	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
+	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
 	{
-		PMQ2TYPEMEMBER pMember = MQ2RewardOptionItemType::FindMember(Member);
+		auto pMember = MQ2RewardOptionItemType::FindMember(Member);
 		if (!pMember)
 			return false;
 		if (!pLocalPlayer)
@@ -521,16 +498,17 @@ public:
 		PCHARINFO pCharInfo = GetCharInfo();
 		switch ((Members)pMember->ID) {
 		case Text:
-			if (!item->szName)
+			if (item->szName[0] == '\0')
 				return false;
 			strcpy_s(DataTypeTemp, item->szName);
 			Dest.Ptr = &DataTypeTemp[0];
-			Dest.Type = pStringType;
+			Dest.Type = mq::datatypes::pStringType;
 			return true;
 		}
 		return false;
 	}
-	bool ToString(MQ2VARPTR VarPtr, PCHAR Destination)
+
+	virtual bool ToString(MQVarPtr VarPtr, char* Destination) override
 	{
 		if (!VarPtr.Ptr) {
 			return false;
@@ -542,15 +520,19 @@ public:
 		strcpy_s(Destination, MAX_STRING, itemPtr->szName);
 		return true;
 	}
-	void InitVariable(MQ2VARPTR& VarPtr) {
+
+	// TODO: Remove this.
+	void InitVariable(MQVarPtr& VarPtr) {
 		VarPtr.Ptr = malloc(sizeof(RewardOption));
 		VarPtr.HighPart = 0;
 		ZeroMemory(VarPtr.Ptr, sizeof(RewardOption));
 	}
-	void FreeVariable(MQ2VARPTR& VarPtr) {
+
+	void FreeVariable(MQVarPtr& VarPtr) {
 		free(VarPtr.Ptr);
 	}
-	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
+
+	virtual bool FromData(MQVarPtr& VarPtr, const MQTypeVar& Source) override
 	{
 		if (Source.Type != pRewardOptionItemType)
 		{
@@ -560,10 +542,6 @@ public:
 		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(RewardOption));
 
 		return true;
-	}
-	bool FromString(MQ2VARPTR& VarPtr, PCHAR Source)
-	{
-		return false;
 	}
 };
 
@@ -588,9 +566,9 @@ public:
 
 	~MQ2RewardOptionType() {}
 
-	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
+	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
 	{
-		PMQ2TYPEMEMBER pMember = MQ2RewardOptionType::FindMember(Member);
+		auto pMember = MQ2RewardOptionType::FindMember(Member);
 		if (!pMember)
 			return false;
 		if (!pLocalPlayer)
@@ -611,22 +589,22 @@ public:
 				return false;
 			strcpy_s(DataTypeTemp, item->szName);
 			Dest.Ptr = &DataTypeTemp[0];
-			Dest.Type = pStringType;
+			Dest.Type = mq::datatypes::pStringType;
 			return true;
 		case Selected:
 			if (!item->listWndPtr)
 				return false;
 			Dest.Int = item->listWndPtr->GetCurSel() == item->index;
-			Dest.Type = pBoolType;
+			Dest.Type = mq::datatypes::pBoolType;
 			return true;
 		case Select:
 			item->listWndPtr->SetCurSel(item->index);
 			Dest.Int = 1;
-			Dest.Type = pBoolType;
+			Dest.Type = mq::datatypes::pBoolType;
 			return true;
 		case ItemCount:
 			Dest.Int = GetRewardOptionItemCount(GetPagePtr(item->listWndPtr));
-			Dest.Type = pIntType;
+			Dest.Type = mq::datatypes::pIntType;
 			return Dest.Int >= 0;
 		case Item:
 			if (Index[0]) {
@@ -643,7 +621,7 @@ public:
 		return false;
 	}
 
-	bool ToString(MQ2VARPTR VarPtr, PCHAR Destination)
+	virtual bool ToString(MQVarPtr VarPtr, char* Destination) override
 	{
 		if (!VarPtr.Ptr) {
 			return false;
@@ -656,17 +634,18 @@ public:
 		return true;
 	}
 
-	void InitVariable(MQ2VARPTR& VarPtr) {
+	// TODO: Remove this.
+	void InitVariable(MQVarPtr& VarPtr) {
 		VarPtr.Ptr = malloc(sizeof(RewardOption));
 		VarPtr.HighPart = 0;
 		ZeroMemory(VarPtr.Ptr, sizeof(RewardOption));
 	}
 
-	void FreeVariable(MQ2VARPTR& VarPtr) {
+	void FreeVariable(MQVarPtr& VarPtr) {
 		free(VarPtr.Ptr);
 	}
 
-	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
+	virtual bool FromData(MQVarPtr& VarPtr, const MQTypeVar& Source) override
 	{
 		if (Source.Type != pRewardOptionType)
 		{
@@ -676,11 +655,6 @@ public:
 		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(RewardOption));
 
 		return true;
-	}
-
-	bool FromString(MQ2VARPTR& VarPtr, PCHAR Source)
-	{
-		return false;
 	}
 };
 
@@ -710,9 +684,9 @@ public:
 	}
 	~MQ2RewardType() {}
 
-	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
+	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
 	{
-		PMQ2TYPEMEMBER pMember = MQ2RewardType::FindMember(Member);
+		auto pMember = MQ2RewardType::FindMember(Member);
 		if (!pMember)
 			return false;
 		if (!pLocalPlayer)
@@ -730,28 +704,26 @@ public:
 		switch ((Members)pMember->ID) {
 		case Text:
 		{
-			char buffer[MAX_STRING] = { 0 };
-			GetCXStr(item->pagePtr->TabText, buffer, MAX_STRING);
-			strcpy_s(DataTypeTemp, buffer);
+			strcpy_s(DataTypeTemp, item->pagePtr->TabText.c_str());
 			Dest.Ptr = &DataTypeTemp[0];
-			Dest.Type = pStringType;
+			Dest.Type = mq::datatypes::pStringType;
 			return true;
 		}
 		case Selected:
 			Dest.Int = item->pagePtr->IsVisible();
-			Dest.Type = pBoolType;
+			Dest.Type = mq::datatypes::pBoolType;
 			return true;
 		case Select:
 			Dest.Int = SelectReward(item);
-			Dest.Type = pBoolType;
+			Dest.Type = mq::datatypes::pBoolType;
 			return true;
 		case Claim:
 			Dest.Int = ClaimReward(item);
-			Dest.Type = pBoolType;
+			Dest.Type = mq::datatypes::pBoolType;
 			return Dest.Int == TRUE;
 		case Options:
 			Dest.Int = GetRewardOptionCount(item);
-			Dest.Type = pIntType;
+			Dest.Type = mq::datatypes::pIntType;
 			return true;
 		case Option:
 			if (Index[0]) {
@@ -769,7 +741,7 @@ public:
 			// TODO: Track whether a page has been visited/loaded. Only force it once.
 			SelectReward(item);
 			Dest.Int = GetRewardOptionItemCount(item->pagePtr);
-			Dest.Type = pIntType;
+			Dest.Type = mq::datatypes::pIntType;
 			return true;
 		case Item:
 			if (Index[0]) {
@@ -788,7 +760,8 @@ public:
 		}
 		return false;
 	}
-	bool ToString(MQ2VARPTR VarPtr, PCHAR Destination)
+
+	virtual bool ToString(MQVarPtr VarPtr, char* Destination) override
 	{
 		if (!VarPtr.Ptr) {
 			return false;
@@ -797,20 +770,22 @@ public:
 		if (!item) {
 			return false;
 		}
-		char buffer[MAX_STRING] = { 0 };
-		GetCXStr(item->pagePtr->TabText, buffer, MAX_STRING);
-		strcpy_s(Destination, MAX_STRING, buffer);
+		strcpy_s(Destination, MAX_STRING, item->pagePtr->TabText.c_str());
 		return true;
 	}
-	void InitVariable(MQ2VARPTR& VarPtr) {
+
+	// TODO: Remove this.
+	void InitVariable(MQVarPtr& VarPtr) {
 		VarPtr.Ptr = malloc(sizeof(RewardItem));
 		VarPtr.HighPart = 0;
 		ZeroMemory(VarPtr.Ptr, sizeof(RewardItem));
 	}
-	void FreeVariable(MQ2VARPTR& VarPtr) {
+
+	void FreeVariable(MQVarPtr& VarPtr) {
 		free(VarPtr.Ptr);
 	}
-	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
+
+	virtual bool FromData(MQVarPtr& VarPtr, const MQTypeVar& Source) override
 	{
 		if (Source.Type != pRewardType)
 		{
@@ -820,10 +795,6 @@ public:
 		memcpy(VarPtr.Ptr, Source.Ptr, sizeof(RewardItem));
 
 		return true;
-	}
-	bool FromString(MQ2VARPTR& VarPtr, PCHAR Source)
-	{
-		return false;
 	}
 };
 
@@ -841,9 +812,9 @@ public:
 	}
 	~MQ2RewardsType() {}
 
-	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
+	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
 	{
-		PMQ2TYPEMEMBER pMember = MQ2RewardsType::FindMember(Member);
+		auto pMember = MQ2RewardsType::FindMember(Member);
 		if (!pMember)
 			return false;
 		if (!pLocalPlayer)
@@ -864,22 +835,14 @@ public:
 			break;
 		case Count:
 			Dest.Int = GetRewardsCount();
-			Dest.Type = pIntType;
+			Dest.Type = datatypes::pIntType;
 			return true;
 		}
 		return false;
 	}
-	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
-	{
-		return false;
-	}
-	bool FromString(MQ2VARPTR& VarPtr, PCHAR Source)
-	{
-		return false;
-	}
 };
 
-BOOL TloRewards(char* szIndex, MQ2TYPEVAR& Dest)
+bool TloRewards(const char* szIndex, MQTypeVar& Dest)
 {
 	Dest.DWord = 1;
 	Dest.Type = pRewardsType;
