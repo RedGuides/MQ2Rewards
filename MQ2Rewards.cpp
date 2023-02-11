@@ -5,6 +5,8 @@ PLUGIN_VERSION(1.0);
 
 const int RewardChoiceColumn = 0;
 
+fEQCommand cmdRewards = nullptr;
+
 struct RewardItem
 {
 	bool exists;
@@ -311,7 +313,7 @@ VOID CommandDisplayHelp()
 {
 	WriteChatColor("MQ2Rewards", USERCOLOR_WHO);
 	WriteChatColor("", USERCOLOR_WHO);
-	WriteChatColor("usage: /rewards [param] (arg1)", USERCOLOR_WHO);
+	WriteChatColor("usage: /mqrewards [param] (arg1)", USERCOLOR_WHO);
 	WriteChatColor("   params:", USERCOLOR_WHO);
 	WriteChatColor("   [reward: (reward)	Selects the specified reward (tab) name/# if found but does not claim]", USERCOLOR_WHO);
 	WriteChatColor("   [option: (option)    For the current reward, selects the specified reward name/# if found but does not claim]", USERCOLOR_WHO);
@@ -427,39 +429,43 @@ VOID CommandClaimReward(PSPAWNINFO pChar, PCHAR szLine)
 	SendWndClick2((CXWnd*)selectOptionButton, "leftmouseup");
 }
 
-VOID RewardsCommand(PSPAWNINFO pChar, PCHAR szLine)
+void MQRewardsCommand(SPAWNINFO* pChar, char* szLine)
 {
 	char arg1[MAX_STRING] = { 0 };
 	GetArg(arg1, szLine, 1);
-	CHAR szTemp[32] = { 0 };
-
-	if (!_stricmp(arg1, "help"))
-	{
-		CommandDisplayHelp();
-		return;
-	}
 
 	if (!_stricmp(arg1, "reward"))
 	{
 		CommandSelectReward(pChar, szLine);
-		return;
 	}
-
-	if (!_stricmp(arg1, "option"))
+	else if (!_stricmp(arg1, "option"))
 	{
 		CommandSelectOption(pChar, szLine);
-		return;
 	}
-
-	if (!_stricmp(arg1, "claim"))
+	else if (!_stricmp(arg1, "claim"))
 	{
 		CommandClaimReward(pChar, szLine);
-		return;
 	}
-
-	CommandDisplayHelp();
+	else
+	{
+		CommandDisplayHelp();
+	}
 }
 
+void RewardsCommand(SPAWNINFO* pChar, char* szLine)
+{
+	char arg1[MAX_STRING] = { 0 };
+	GetArg(arg1, szLine, 1);
+	if (arg1[0] == '\0')
+	{
+		cmdRewards(pChar, szLine);
+	}
+	else
+	{
+		WriteChatf("[%s] \ayWARNING\ax /rewards is deprecated, please use /mqrewards instead", mqplugin::PluginName);
+		MQRewardsCommand(pChar, szLine);
+	}
+}
 
 class MQ2RewardsType* pRewardsType = nullptr;
 class MQ2RewardType* pRewardType = nullptr;
@@ -850,9 +856,18 @@ bool TloRewards(const char* szIndex, MQTypeVar& Dest)
 }
 
 // Called once, when the plugin is to initialize
-PLUGIN_API VOID InitializePlugin(VOID)
+PLUGIN_API void InitializePlugin()
 {
+	const CMDLIST* pCmdListOrig = EQADDR_CMDLIST;
+	for (int i = 0; pCmdListOrig[i].fAddress != nullptr; i++)
+	{
+		if (!strcmp(pCmdListOrig[i].szName, "/rewards"))
+		{
+			cmdRewards = static_cast<fEQCommand>(pCmdListOrig[i].fAddress);
+		}
+	}
 	AddCommand("/rewards", RewardsCommand);
+	AddCommand("/mqrewards", MQRewardsCommand);
 	pRewardsType = new MQ2RewardsType;
 	pRewardType = new MQ2RewardType;
 	pRewardOptionType = new MQ2RewardOptionType;
@@ -860,9 +875,11 @@ PLUGIN_API VOID InitializePlugin(VOID)
 	AddMQ2Data("Rewards", TloRewards);
 }
 
-PLUGIN_API VOID ShutdownPlugin(VOID)
+PLUGIN_API void ShutdownPlugin()
 {
 	RemoveCommand("/rewards");
+	AddCommand("/rewards", cmdRewards, true);
+	RemoveCommand("/mqrewards");
 	RemoveMQ2Data("Rewards");
 	delete pRewardsType;
 	delete pRewardType;
