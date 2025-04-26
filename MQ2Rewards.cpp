@@ -91,22 +91,8 @@ CPageWnd* GetCurrentPage()
 int GetRewardsCount()
 {
 	CTabWnd* tabWindow = GetTabWindow();
-	if (!tabWindow)
-	{
-		return -1;
-	}
 
-	int rewardCount = -1;
-
-	auto* pageWindow = tabWindow->GetFirstChildWnd();
-	while (pageWindow)
-	{
-		rewardCount++;
-
-		pageWindow = pageWindow->GetNextSiblingWnd();
-	}
-
-	return rewardCount;
+	return tabWindow ? tabWindow->GetNumTabs() : -1;
 }
 
 int GetRewardOptionCount(RewardItem* rewardPtr)
